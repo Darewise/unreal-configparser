@@ -3,13 +3,14 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "commented-configparser"
+name = "unreal-configparser"
 version = "1.0.0"
 requires-python = ">=3.7"
-description = "Custom ConfigParser class that preserves comments in file when writing"
+description = "Custom ConfigParser class to parse UE5 config file and format them while preserving comments in file and Array keys order."
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
+    { email = "ernest@darewise.com", name = "Ernest" }
     { email = "preocts@preocts.com", name = "Preocts" }
 ]
 maintainers = []

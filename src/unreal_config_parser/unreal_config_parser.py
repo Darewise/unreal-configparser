@@ -20,13 +20,13 @@ if TYPE_CHECKING:
     from _typeshed import StrOrBytesPath
     from _typeshed import SupportsWrite
 
-__all__ = ["CommentedConfigParser"]
+__all__ = ["UnrealConfigParser"]
 
 COMMENT_PTN = re.compile(r"^\s*[#|;]")
 SECTION_PTN = re.compile(r"^\s*\[(.+)\]\s*$")
 
 
-class CommentedConfigParser(RawConfigParser):
+class UnrealConfigParser(RawConfigParser):
     """Custom ConfigParser that preserves comments when writing a loaded config out."""
 
     # --- Overriding RawConfigParser function to support Unreal config array operators ---

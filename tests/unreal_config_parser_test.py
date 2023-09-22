@@ -1,3 +1,5 @@
+# TODO: need to fix them, they shouldn't work anymore after the changes.
+
 from __future__ import annotations
 
 import json
@@ -5,7 +7,7 @@ from io import StringIO
 from pathlib import Path
 
 import pytest
-from commentedconfigparser.commentedconfigparser import CommentedConfigParser
+from UnrealConfigParser.UnrealConfigParser import UnrealConfigParser
 
 CONFIG_W_COMMENTS = "tests/withcomments.ini"
 CONFIG_W_COMMENTS_STR = Path("tests/withcomments.ini").read_text()
@@ -50,7 +52,7 @@ EXPECTED_STR = Path("tests/expected.ini").read_text()
 
 
 def test_assert_class_var_is_always_empty() -> None:
-    assert CommentedConfigParser._comment_map is None
+    assert UnrealConfigParser._comment_map is None
 
 
 @pytest.mark.parametrize(
@@ -67,7 +69,7 @@ def test_assert_class_var_is_always_empty() -> None:
     ),
 )
 def test_is_comment(line: str, expected: bool) -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
 
     result = cc._is_comment(line)
 
@@ -84,7 +86,7 @@ def test_is_comment(line: str, expected: bool) -> None:
     ),
 )
 def test_is_empty(line: str, expected: bool) -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
 
     result = cc._is_empty(line)
 
@@ -102,7 +104,7 @@ def test_is_empty(line: str, expected: bool) -> None:
     ),
 )
 def test_is_section(line: str, expected: bool) -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
 
     result = cc._is_section(line)
 
@@ -126,7 +128,7 @@ def test_is_section(line: str, expected: bool) -> None:
     ),
 )
 def test_get_line_key(line: str, expected: str) -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
 
     result = cc._get_key(line)
 
@@ -134,7 +136,7 @@ def test_get_line_key(line: str, expected: str) -> None:
 
 
 def test_regression_read_loads_normally_list() -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
 
     read = cc.read([CONFIG_W_COMMENTS, "notfoundatall.ini"])
 
@@ -142,7 +144,7 @@ def test_regression_read_loads_normally_list() -> None:
 
 
 def test_regression_read_loads_normally_single_file() -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
 
     read = cc.read(CONFIG_W_COMMENTS)
 
@@ -150,7 +152,7 @@ def test_regression_read_loads_normally_single_file() -> None:
 
 
 def test_regression_read_file_normally() -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
 
     with open(CONFIG_W_COMMENTS) as file:
         cc.read_file(file)
@@ -159,7 +161,7 @@ def test_regression_read_file_normally() -> None:
 
 
 def test_regression_read_string_loads_normally() -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
 
     cc.read_string("[TEST]\ntest=pass")
 
@@ -167,7 +169,7 @@ def test_regression_read_string_loads_normally() -> None:
 
 
 def test_regression_read_dict_loads_normally() -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
 
     cc.read_dict({"TEST": {"test": "pass"}})
 
@@ -175,7 +177,7 @@ def test_regression_read_dict_loads_normally() -> None:
 
 
 def test_regression_write_normally() -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
     expected = "[TEST]\ntest=pass\n"
     cc.read_string(expected)
     mock_file = StringIO()
@@ -186,7 +188,7 @@ def test_regression_write_normally() -> None:
 
 
 def test_fileload() -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
 
     result = cc._fileload("tests/withcomments.ini")
 
@@ -195,7 +197,7 @@ def test_fileload() -> None:
 
 
 def test_fileload_silently_fails() -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
 
     result = cc._fileload("tests/notherefile.ini")
 
@@ -203,7 +205,7 @@ def test_fileload_silently_fails() -> None:
 
 
 def test_map_comments() -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
     expected = json.dumps(EXPECTED_MAP)
 
     cc._map_comments(CONFIG_W_COMMENTS_STR)
@@ -214,7 +216,7 @@ def test_map_comments() -> None:
 
 
 def test_read_file_captures_comments() -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
     expected = json.dumps(EXPECTED_MAP)
 
     with open(CONFIG_W_COMMENTS) as file:
@@ -225,7 +227,7 @@ def test_read_file_captures_comments() -> None:
 
 
 def test_read_captures_comments_single_file() -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
     expected = json.dumps(EXPECTED_MAP)
 
     cc.read(CONFIG_W_COMMENTS)
@@ -235,7 +237,7 @@ def test_read_captures_comments_single_file() -> None:
 
 
 def test_read_string_captures_comments() -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
     expected = json.dumps(EXPECTED_MAP)
 
     cc.read_string(CONFIG_W_COMMENTS_STR)
@@ -245,7 +247,7 @@ def test_read_string_captures_comments() -> None:
 
 
 def test_write_with_comments_single_file() -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
     cc.read_string(CONFIG_W_COMMENTS_STR)
     mock_file = StringIO()
 
@@ -255,7 +257,7 @@ def test_write_with_comments_single_file() -> None:
 
 
 def test_write_with_no_comments() -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
     expected = "[TEST]\ntest=pass\n\n"
     cc.read_dict({"TEST": {"test": "pass"}})
     mock_file = StringIO()
@@ -266,7 +268,7 @@ def test_write_with_no_comments() -> None:
 
 
 def test_merge_deleted_keys_no_map() -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
 
     cc._merge_deleted_keys()
 
@@ -274,7 +276,7 @@ def test_merge_deleted_keys_no_map() -> None:
 
 
 def test_merge_deleted_keys() -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
     cc.read_dict({"TEST": {}})
     cc._comment_map = {
         "@@header": {
@@ -304,7 +306,7 @@ def test_merge_deleted_keys() -> None:
 
 
 def test_merge_multiple_deleted_keys_retain_order() -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
     cc.read_dict({"TEST": {"foo": "bar"}})
     cc._comment_map = {
         "@@header": {
@@ -347,7 +349,7 @@ def test_merge_multiple_deleted_keys_retain_order() -> None:
 
 
 def test_write_with_comments_single_file_remove_key() -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
     mod_expected = EXPECTED_STR.replace("foo=bar\n", "", 1)
     cc.read_string(CONFIG_W_COMMENTS_STR)
     mock_file = StringIO()
@@ -359,7 +361,7 @@ def test_write_with_comments_single_file_remove_key() -> None:
 
 
 def test_restore_comments_no_comments() -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
 
     result = cc._restore_comments("This is only a test")
 
@@ -367,7 +369,7 @@ def test_restore_comments_no_comments() -> None:
 
 
 def test_merge_deleted_sections() -> None:
-    cc = CommentedConfigParser()
+    cc = UnrealConfigParser()
     cc.read_dict({})
     cc._comment_map = {
         "@@header": {

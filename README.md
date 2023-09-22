@@ -7,9 +7,9 @@
 
 # commented-configparser
 
-A custom ConfigParser class that preserves comments when writing loaded config out.
+A Custom ConfigParser class to parse UE5 config file and format them while preserving comments in file and Array keys.
 
-This library gives you a custom class of the standard library's `configparser.ConfigParger` which will preserve the comments of a loaded config file when writing that file back out.
+This library gives you a custom class of the standard library's `configparser.ConfigParger` which will preserve the comments and Array keys of a loaded config file when writing that file back out.
 
 ---
 
@@ -34,10 +34,10 @@ python -m pip install commented-configparser@git+https://github.com/Preocts/comm
 ## Example use
 
 ```py
-from commentedconfigparser import CommentedConfigParser
+from UnrealConfigParser import UnrealConfigParser
 
 # Load the config like normal
-config = CommentedConfigParser()
+config = UnrealConfigParser()
 config.read("myconfig.ini")
 
 # Use the config like normal
