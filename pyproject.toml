@@ -10,7 +10,7 @@ description = "Custom ConfigParser class to parse UE5 config file and format the
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
-    { email = "ernest@darewise.com", name = "Ernest" }
+    { email = "ernest@darewise.com", name = "Ernest" },
     { email = "preocts@preocts.com", name = "Preocts" }
 ]
 maintainers = []
