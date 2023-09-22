@@ -47,14 +47,14 @@ test = [
 ]
 
 [project.urls]
-homepage = "https://github.com/Preocts/commented-configparser"
+homepage = "https://github.com/Darewise/unreal-configparser"
 # documentation = ""
 # repository = ""
 # changelog = ""
 
 # CLI scripts if needed
 # [project.scripts]
-# python-src-example = "commented-configparser.sample:main"
+# python-src-example = "unreal-configparser.sample:main"
 
 # [tool.setuptools.packages.find]
 # where = ["src"]  # ["."] by default
