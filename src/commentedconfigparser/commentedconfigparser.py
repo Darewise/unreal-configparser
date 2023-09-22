@@ -2,7 +2,13 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from configparser import RawConfigParser, DuplicateSectionError, SectionProxy, MissingSectionHeaderError, DuplicateOptionError
+from configparser import (
+    RawConfigParser,
+    DuplicateSectionError,
+    SectionProxy,
+    MissingSectionHeaderError,
+    DuplicateOptionError,
+)
 from io import StringIO
 from typing import TYPE_CHECKING
 import itertools
@@ -23,10 +29,12 @@ SECTION_PTN = re.compile(r"^\s*\[(.+)\]\s*$")
 class CommentedConfigParser(RawConfigParser):
     """Custom ConfigParser that preserves comments when writing a loaded config out."""
 
-# --- Overriding RawConfigParser function to support Unreal config array operators ---
+    # --- Overriding RawConfigParser function to support Unreal config array operators ---
 
-    SPECIAL_KEYS = ";;;;;;"  # key content doesn't matter as long as it can't be a ini key
-    
+    SPECIAL_KEYS = (
+        ";;;;;;"  # key content doesn't matter as long as it can't be a ini key
+    )
+
     @staticmethod
     def is_special_key(key):
         return key.startswith(("!", "+", "-", "."))
@@ -39,10 +47,9 @@ class CommentedConfigParser(RawConfigParser):
             if key == self.SPECIAL_KEYS:
                 continue
             # CORVUS_END
-            value = self._interpolation.before_write(self, section_name, key,
-                                                     value)
+            value = self._interpolation.before_write(self, section_name, key, value)
             if value is not None or not self._allow_no_value:
-                value = delimiter + str(value).replace('\n', '\n\t')
+                value = delimiter + str(value).replace("\n", "\n\t")
             else:
                 value = ""
             fp.write("{}{}\n".format(key, value))
@@ -107,11 +114,13 @@ class CommentedConfigParser(RawConfigParser):
                 if self._empty_lines_in_values:
                     # add empty line to the value, but only if there was no
                     # comment on the line
-                    if (comment_start is None and
-                        cursect is not None and
-                        optname and
-                        optname in cursect):  # CORVUS support for Unreal config array operators
-                        cursect[optname].append('')  # newlines added at join
+                    if (
+                        comment_start is None
+                        and cursect is not None
+                        and optname
+                        and optname in cursect
+                    ):  # CORVUS support for Unreal config array operators
+                        cursect[optname].append("")  # newlines added at join
                 else:
                     # empty line marks end of value
                     indent_level = sys.maxsize
@@ -119,8 +128,7 @@ class CommentedConfigParser(RawConfigParser):
             # continuation line?
             first_nonspace = self.NONSPACECRE.search(line)
             cur_indent_level = first_nonspace.start() if first_nonspace else 0
-            if (cursect is not None and optname and
-                cur_indent_level > indent_level):
+            if cursect is not None and optname and cur_indent_level > indent_level:
                 cursect[optname].append(value)
             # a section header or option header?
             else:
@@ -128,11 +136,10 @@ class CommentedConfigParser(RawConfigParser):
                 # is it a section header?
                 mo = self.SECTCRE.match(value)
                 if mo:
-                    sectname = mo.group('header')
+                    sectname = mo.group("header")
                     if sectname in self._sections:
                         if self._strict and sectname in elements_added:
-                            raise DuplicateSectionError(sectname, fpname,
-                                                        lineno)
+                            raise DuplicateSectionError(sectname, fpname, lineno)
                         cursect = self._sections[sectname]
                         elements_added.add(sectname)
                     elif sectname == self.default_section:
@@ -151,14 +158,14 @@ class CommentedConfigParser(RawConfigParser):
                 else:
                     mo = self._optcre.match(value)
                     if mo:
-                        optname, vi, optval = mo.group('option', 'vi', 'value')
+                        optname, vi, optval = mo.group("option", "vi", "value")
                         if not optname:
                             e = self._handle_error(e, fpname, lineno, line)
                         optname = self.optionxform(optname.rstrip())
-                        if (self._strict and
-                            (sectname, optname) in elements_added):
-                            raise DuplicateOptionError(sectname, optname,
-                                                       fpname, lineno)
+                        if self._strict and (sectname, optname) in elements_added:
+                            raise DuplicateOptionError(
+                                sectname, optname, fpname, lineno
+                            )
                         elements_added.add((sectname, optname))
                         # This check is fine because the OPTCRE cannot
                         # match if it would set optval to None
@@ -166,8 +173,12 @@ class CommentedConfigParser(RawConfigParser):
                             optval = optval.strip()
 
                             # CORVUS_BEGIN support for Unreal config array operators
-                            if self.is_special_key(optname):  # Treat special keys differently
-                                cursect[self.SPECIAL_KEYS] = cursect.get(self.SPECIAL_KEYS, [])
+                            if self.is_special_key(
+                                optname
+                            ):  # Treat special keys differently
+                                cursect[self.SPECIAL_KEYS] = cursect.get(
+                                    self.SPECIAL_KEYS, []
+                                )
                                 cursect[self.SPECIAL_KEYS].append((optname, optval))
                                 continue
                             # CORVUS_END
@@ -188,8 +199,7 @@ class CommentedConfigParser(RawConfigParser):
 
     def _join_multiline_values(self):
         defaults = self.default_section, self._defaults
-        all_sections = itertools.chain((defaults,),
-                                       self._sections.items())
+        all_sections = itertools.chain((defaults,), self._sections.items())
         for section, options in all_sections:
             for name, val in options.items():
                 # CORVUS_BEGIN support for Unreal config array operators
@@ -198,12 +208,12 @@ class CommentedConfigParser(RawConfigParser):
                 # CORVUS_END
 
                 if isinstance(val, list):
-                    val = '\n'.join(val).rstrip()
-                options[name] = self._interpolation.before_read(self,
-                                                                section,
-                                                                name, val)
+                    val = "\n".join(val).rstrip()
+                options[name] = self._interpolation.before_read(
+                    self, section, name, val
+                )
 
-# --------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     _comment_map: dict[str, dict[str, list[str]]] | None = None
 
@@ -229,7 +239,9 @@ class CommentedConfigParser(RawConfigParser):
 
         return super().read_file(content, source)
 
-    def write(self, fp: SupportsWrite[str], space_around_delimiters: bool = True) -> None:
+    def write(
+        self, fp: SupportsWrite[str], space_around_delimiters: bool = True
+    ) -> None:
         # Early exit if the config was never loaded with comments (from_dict/run-time)
         if self._comment_map is None:
             return super().write(fp, space_around_delimiters)
@@ -281,7 +293,7 @@ class CommentedConfigParser(RawConfigParser):
         # Find which of the two assigment delimiters is used first
         matches = self._optcre.match(line)
         return matches.group(1).strip() if matches else line.strip()
-    
+
     def _get_value(self, line: str) -> str:
         """
         /!\ will only work with `allow_no_value=True`
@@ -320,20 +332,25 @@ class CommentedConfigParser(RawConfigParser):
                     new_key = "@@header"
 
                     if key != "@@header":
-                        key = "@@footer"   
-                    
+                        key = "@@footer"
+
                 else:
                     new_section = section
                     new_key = self._get_key(line)
 
-                if key not in ["@@header", "@@footer"]: # or not self._is_section(line):
+                if key not in [
+                    "@@header",
+                    "@@footer",
+                ]:  # or not self._is_section(line):
                     if self.is_special_key(key):
                         value = self._get_value(line)
                         comment_map[section][key] = comment_map[section].get(key, {})
-                        comment_map[section][key][value] = comment_map[section][key].get(value, [])
+                        comment_map[section][key][value] = comment_map[section][
+                            key
+                        ].get(value, [])
                     else:
                         comment_map[section][key] = comment_map[section].get(key, [])
-                    
+
                     key = new_key
                     section = new_section
 
@@ -344,14 +361,18 @@ class CommentedConfigParser(RawConfigParser):
                 # to remember which line the comment should be put back (duplicate keys)
                 if self.is_special_key(key):
                     value = self._get_value(line)
-                    
+
                     # Update the current section, clear, and start again
                     comment_map[section][key] = comment_map[section].get(key, {})
-                    comment_map[section][key][value] = comment_map[section][key].get(value, []) + comment_lines
+                    comment_map[section][key][value] = (
+                        comment_map[section][key].get(value, []) + comment_lines
+                    )
                     comment_lines.clear()
                 else:
                     # Update the current section, clear, and start again
-                    comment_map[section][key] = comment_map[section].get(key, []) + comment_lines.copy()
+                    comment_map[section][key] = (
+                        comment_map[section].get(key, []) + comment_lines.copy()
+                    )
                     comment_lines.clear()
 
                 key = new_key
@@ -392,9 +413,11 @@ class CommentedConfigParser(RawConfigParser):
             if self._is_section(line):
                 if len(rendered) > 0 and rendered[-1] == "":
                     rendered.pop()
-                    rendered.extend(self._comment_map.get(section, {}).get("@@footer", []))
+                    rendered.extend(
+                        self._comment_map.get(section, {}).get("@@footer", [])
+                    )
                     rendered.append("")
-                
+
                 section = self._get_key(line)
                 key = "@@header"
 
@@ -405,7 +428,9 @@ class CommentedConfigParser(RawConfigParser):
 
                 if self.is_special_key(key):
                     value = self._get_value(line)
-                    rendered.extend(self._comment_map.get(section, {}).get(key, {}).get(value, []))
+                    rendered.extend(
+                        self._comment_map.get(section, {}).get(key, {}).get(value, [])
+                    )
                     self._comment_map[section][key][value] = []
                 else:
                     rendered.extend(self._comment_map.get(section, {}).get(key, []))
@@ -434,7 +459,9 @@ class CommentedConfigParser(RawConfigParser):
                 if self.is_special_key(key):
                     continue
                 # Key no longer exists, gather comments and loop upward
-                elif key not in ["@@header", "@@footer"] and not self.has_option(section_mch.group(1), key):
+                elif key not in ["@@header", "@@footer"] and not self.has_option(
+                    section_mch.group(1), key
+                ):
                     # Comments need to be stored in reverse order to avoid
                     # needing to insert into front of list
                     orphaned_comments.extend(self._comment_map[section].pop(key)[::-1])
