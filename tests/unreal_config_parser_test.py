@@ -7,7 +7,7 @@ from io import StringIO
 from pathlib import Path
 
 import pytest
-from UnrealConfigParser.UnrealConfigParser import UnrealConfigParser
+from unreal_config_parser.unreal_config_parser import UnrealConfigParser
 
 CONFIG_W_COMMENTS = "tests/withcomments.ini"
 CONFIG_W_COMMENTS_STR = Path("tests/withcomments.ini").read_text()

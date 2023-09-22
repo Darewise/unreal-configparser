@@ -63,7 +63,7 @@ homepage = "https://github.com/Darewise/unreal-configparser"
 # namespaces = true  # true by default
 
 [tool.setuptools.package-data]
-"commentedconfigparser" = ["py.typed"]
+"unreal_config_parser" = ["py.typed"]
 
 [tool.mypy]
 check_untyped_defs = true
@@ -85,7 +85,7 @@ source = [
     "tests",
 ]
 source_pkgs = [
-    "commentedconfigparser",
+    "unreal_config_parser",
 ]
 
 [tool.coverage.paths]
