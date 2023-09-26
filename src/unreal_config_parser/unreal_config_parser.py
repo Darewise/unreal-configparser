@@ -1,6 +1,7 @@
 """Custom ConfigParser class to parse UE5 config files and format them while preserving comments in file and Array keys order."""
 from __future__ import annotations
 
+from collections import OrderedDict
 from collections.abc import Iterable
 from configparser import (
     RawConfigParser,
@@ -8,6 +9,8 @@ from configparser import (
     SectionProxy,
     MissingSectionHeaderError,
     DuplicateOptionError,
+    DEFAULTSECT,
+    _UNSET,
 )
 from io import StringIO
 from typing import TYPE_CHECKING
@@ -26,6 +29,20 @@ COMMENT_PTN = re.compile(r"^\s*[#|;]")
 SECTION_PTN = re.compile(r"^\s*\[(.+)\]\s*$")
 
 
+# Ordered Dict that allow duplicates on !+-. keys, transform them to list
+class UnrealConfigMultiOrderedDict(OrderedDict):
+    def __setitem__(self, key, value):
+        # We only want duplicate on array operators
+        if (
+            UnrealConfigParser.is_special_key(key)
+            and isinstance(value, list)
+            and key in self
+        ):
+            self[key].extend(value)
+        else:
+            super().__setitem__(key, value)
+
+
 class UnrealConfigParser(RawConfigParser):
     """Custom ConfigParser that preserves comments when writing a loaded config out."""
 
@@ -34,6 +51,50 @@ class UnrealConfigParser(RawConfigParser):
     SPECIAL_KEYS = (
         ";;;;;;"  # key content doesn't matter as long as it can't be a ini key
     )
+
+    def __init__(
+        self,
+        defaults=None,
+        dict_type=UnrealConfigMultiOrderedDict,
+        allow_no_value=True,
+        *,
+        delimiters=("="),
+        comment_prefixes=("#", ";"),
+        inline_comment_prefixes=None,
+        strict=False,
+        empty_lines_in_values=True,
+        default_section=DEFAULTSECT,
+        interpolation=_UNSET,
+        converters=_UNSET,
+    ):
+        super().__init__(
+            defaults=defaults,
+            dict_type=dict_type,
+            allow_no_value=allow_no_value,
+            delimiters=delimiters,
+            comment_prefixes=comment_prefixes,
+            inline_comment_prefixes=inline_comment_prefixes,
+            strict=strict,
+            empty_lines_in_values=empty_lines_in_values,
+            default_section=default_section,
+            interpolation=interpolation,
+            converters=converters,
+        )
+
+    def sort(self):
+        unsorted_sections = dict(self._sections)
+
+        sections = sorted(self._sections)
+        self.clear()
+        for s in sections:
+            self.add_section(s)
+            items = sorted(unsorted_sections[s].items())
+            for i in items:
+                self.set(s, i[0], i[1])
+
+    # override to preserve case
+    def optionxform(self, optionstr):
+        return optionstr
 
     @staticmethod
     def is_special_key(key):
@@ -428,10 +489,12 @@ class UnrealConfigParser(RawConfigParser):
 
                 if self.is_special_key(key):
                     value = self._get_value(line)
-                    rendered.extend(
+                    comment = (
                         self._comment_map.get(section, {}).get(key, {}).get(value, [])
                     )
-                    self._comment_map[section][key][value] = []
+                    rendered.extend(comment)
+                    if len(comment) > 0:
+                        self._comment_map[section][key][value] = []
                 else:
                     rendered.extend(self._comment_map.get(section, {}).get(key, []))
                     self._comment_map[section][key] = []
