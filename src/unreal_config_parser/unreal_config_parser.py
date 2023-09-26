@@ -92,6 +92,7 @@ class UnrealConfigParser(RawConfigParser):
             for i in items:
                 self.set(s, i[0], i[1])
 
+
     # override to preserve case
     def optionxform(self, optionstr):
         return optionstr
@@ -120,8 +121,9 @@ class UnrealConfigParser(RawConfigParser):
         # Always write special keys (list +-.!) at the end of section.
         for key, value in section_items:
             if key == self.SPECIAL_KEYS:
-                for special_key, special_value in value:
-                    fp.write(f"{special_key}{delimiter}{special_value}\n")
+                for array_key_value in sorted(value.items()):
+                    for special_key, special_value in array_key_value[1]:
+                        fp.write(f"{special_key}{delimiter}{special_value}\n")
         # CORVUS_END
         fp.write("\n")
 
@@ -238,9 +240,12 @@ class UnrealConfigParser(RawConfigParser):
                                 optname
                             ):  # Treat special keys differently
                                 cursect[self.SPECIAL_KEYS] = cursect.get(
-                                    self.SPECIAL_KEYS, []
+                                    self.SPECIAL_KEYS, {}
                                 )
-                                cursect[self.SPECIAL_KEYS].append((optname, optval))
+
+                                array_key = optname[1:]
+                                cursect[self.SPECIAL_KEYS][array_key] = cursect[self.SPECIAL_KEYS].get(array_key, [])
+                                cursect[self.SPECIAL_KEYS][array_key].append((optname, optval))
                                 continue
                             # CORVUS_END
                             cursect[optname] = [optval]
