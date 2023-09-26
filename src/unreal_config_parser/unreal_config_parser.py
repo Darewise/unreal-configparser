@@ -84,14 +84,17 @@ class UnrealConfigParser(RawConfigParser):
     def sort(self):
         unsorted_sections = dict(self._sections)
 
-        sections = sorted(self._sections)
+        sections = sorted(self._sections, key=str.casefold)
         self.clear()
         for s in sections:
             self.add_section(s)
-            items = sorted(unsorted_sections[s].items())
+            # sort in this order of importance, by len first then case-insensitive then lower-case first.
+            items = sorted(
+                unsorted_sections[s].items(),
+                key=lambda s: (len(s[0]), s[0].casefold(), s[0].swapcase()),
+            )
             for i in items:
                 self.set(s, i[0], i[1])
-
 
     # override to preserve case
     def optionxform(self, optionstr):
@@ -244,8 +247,12 @@ class UnrealConfigParser(RawConfigParser):
                                 )
 
                                 array_key = optname[1:]
-                                cursect[self.SPECIAL_KEYS][array_key] = cursect[self.SPECIAL_KEYS].get(array_key, [])
-                                cursect[self.SPECIAL_KEYS][array_key].append((optname, optval))
+                                cursect[self.SPECIAL_KEYS][array_key] = cursect[
+                                    self.SPECIAL_KEYS
+                                ].get(array_key, [])
+                                cursect[self.SPECIAL_KEYS][array_key].append(
+                                    (optname, optval)
+                                )
                                 continue
                             # CORVUS_END
                             cursect[optname] = [optval]
