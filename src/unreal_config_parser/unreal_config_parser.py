@@ -1,4 +1,5 @@
-"""Custom ConfigParser class to parse UE5 config files and format them while preserving comments in file and Array keys order."""
+"""Custom ConfigParser class to parse UE5 config files.
+You can sort and reformat them while preserving comments in file and Array keys order."""
 from __future__ import annotations
 
 from collections import OrderedDict
@@ -49,7 +50,7 @@ class UnrealConfigParser(RawConfigParser):
     # --- Overriding RawConfigParser function to support Unreal config array operators ---
 
     SPECIAL_KEYS = (
-        ";;;;;;"  # key content doesn't matter as long as it can't be a ini key
+        ";;;;;;"  # key content doesn't matter as long as it can't be an ini key
     )
 
     def __init__(
@@ -105,7 +106,7 @@ class UnrealConfigParser(RawConfigParser):
         return key.startswith(("!", "+", "-", "."))
 
     def _write_section(self, fp, section_name, section_items, delimiter):
-        """Write a single section to the specified `fp'."""
+        """Write a single section to the specified `fp`."""
         fp.write("[{}]\n".format(section_name))
         for key, value in section_items:
             # CORVUS_BEGIN support for Unreal config array operators
@@ -328,8 +329,8 @@ class UnrealConfigParser(RawConfigParser):
 
         fp.write(rendered_output)
 
+    @staticmethod
     def _fileload(
-        self,
         filepath: StrOrBytesPath,
         encoding: str | None = None,
     ) -> str | None:
@@ -340,15 +341,18 @@ class UnrealConfigParser(RawConfigParser):
         except OSError:
             return None
 
-    def _is_comment(self, line: str) -> bool:
+    @staticmethod
+    def _is_comment(line: str) -> bool:
         """True if the line is a valid ini comment."""
         return bool(COMMENT_PTN.search(line))
 
-    def _is_empty(self, line: str) -> bool:
-        """True if line is just whitesspace."""
+    @staticmethod
+    def _is_empty(line: str) -> bool:
+        """True if line is just whitespace."""
         return not bool(re.sub(r"\s*", "", line))
 
-    def _is_section(self, line: str) -> bool:
+    @staticmethod
+    def _is_section(line: str) -> bool:
         """True if line is a section."""
         return bool(SECTION_PTN.search(line))
 
@@ -363,7 +367,7 @@ class UnrealConfigParser(RawConfigParser):
         Respects both `=` and `:` delimiters, uses which happens first. If
         the line contains neither, the entire line is returned.
         """
-        # Find which of the two assigment delimiters is used first
+        # Find which of the two assignment delimiters is used first
         matches = self._optcre.match(line)
         return matches.group(1).strip() if matches else line.strip()
 
@@ -375,14 +379,14 @@ class UnrealConfigParser(RawConfigParser):
         Respects both `=` and `:` delimiters, uses which happens first. If
         the line contains neither, the entire line is returned.
         """
-        # Find which of the two assigment delimiters is used first
+        # Find which of the two assignment delimiters is used first
         matches = self._optcre.match(line)
         return matches.group(3).strip() if matches else line.strip()
 
     def _map_comments(self, content: str | None) -> None:
         """Map comments of config internally for restoration on write."""
         # The map holds comments that happen under the given key
-        # @@header is an arbatrary section and key assigned to
+        # @@header is an arbitrary section and key assigned to
         # capture the top of a file or section.
         section = "@@header"
         key = "@@header"
@@ -523,7 +527,7 @@ class UnrealConfigParser(RawConfigParser):
             return
 
         orphaned_comments: list[str] = []
-        # Walk the sections and keys backward so we merge 'up'.
+        # Walk the sections and keys backward, so we merge 'up'.
         for section in list(self._comment_map.keys())[::-1]:
             section_mch = SECTION_PTN.match(section)
             if section_mch is None:
