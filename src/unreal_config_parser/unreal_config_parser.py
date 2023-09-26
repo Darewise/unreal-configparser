@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 __all__ = ["UnrealConfigParser"]
 
-COMMENT_PTN = re.compile(r"^\s*[#|;]")
+COMMENT_PTN = re.compile(r"^\s*[#|;]\s*(.*)\s*")
 SECTION_PTN = re.compile(r"^\s*\[(.+)\]\s*$")
 
 
@@ -52,6 +52,23 @@ class UnrealConfigParser(RawConfigParser):
     SPECIAL_KEYS = (
         ";;;;;;"  # key content doesn't matter as long as it can't be an ini key
     )
+    _OPT_TMPL = r"""
+        ^\s*(?P<option>[^\s]+?)                    # very permissive!
+        \s*(?P<vi>{delim})\s*              # any number of space/tab,
+                                           # followed by any of the
+                                           # allowed delimiters,
+                                           # followed by any space/tab
+        (?P<value>.*)$                     # everything up to eol
+        """
+    _OPT_NV_TMPL = r"""
+        ^\s*(?P<option>[^\s]+?)                    # very permissive!
+        \s*(?:                             # any number of space/tab,
+        (?P<vi>{delim})\s*                 # optionally followed by
+                                           # any of the allowed
+                                           # delimiters, followed by any
+                                           # space/tab
+        (?P<value>.*))?$                   # everything up to eol
+        """
 
     def __init__(
         self,
@@ -395,8 +412,26 @@ class UnrealConfigParser(RawConfigParser):
         comment_lines: list[str] = []
         comment_map = self._comment_map if self._comment_map else {}
 
+        last_array_value = None
         for line in content_lines:
             if self._is_comment(line):
+                matches = COMMENT_PTN.match(line)
+                if matches:
+                    comment = matches.group(1)
+                    comment_key = self._get_key(comment)
+
+                    if (
+                        self.is_special_key(comment_key)
+                        and comment_key[1:] == key[1:]
+                        and last_array_value is not None
+                    ):
+                        comment_map[section][key] = comment_map[section].get(key, {})
+                        comment_map[section][key][last_array_value] = comment_map[
+                            section
+                        ][key].get(last_array_value, [])
+                        comment_map[section][key][last_array_value].append(line)
+                        continue
+
                 comment_lines.append(line)
 
             # We allow empty lines to be ignored giving the library
@@ -437,12 +472,13 @@ class UnrealConfigParser(RawConfigParser):
                 # for special keys (list operator +-!.) we want to store the value too,
                 # to remember which line the comment should be put back (duplicate keys)
                 if self.is_special_key(key):
-                    value = self._get_value(line)
+                    last_array_value = self._get_value(line)
 
                     # Update the current section, clear, and start again
                     comment_map[section][key] = comment_map[section].get(key, {})
-                    comment_map[section][key][value] = (
-                        comment_map[section][key].get(value, []) + comment_lines
+                    comment_map[section][key][last_array_value] = (
+                        comment_map[section][key].get(last_array_value, [])
+                        + comment_lines
                     )
                     comment_lines.clear()
                 else:
