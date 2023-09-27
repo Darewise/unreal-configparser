@@ -44,6 +44,21 @@ class UnrealConfigMultiOrderedDict(OrderedDict):
             super().__setitem__(key, value)
 
 
+# try to sort keys in a natural way for human.
+# e.g: a2, a12, aa, aaa, Aaa, aaaaaaaaa, aba, aBa, bb, bbb, Bbb
+# - split the strings into segments of numbers and non-numbers.
+# - compare the segments individually, in a case-insensitive way or as number.
+def natural_sort_key(key):
+    def convert(segment):
+        if segment.isdigit():
+            return int(segment)
+        else:
+            return segment.casefold(), segment.swapcase()
+
+    segments = re.findall(r"(\d+|\D+)", key)
+    return [convert(segment) for segment in segments]
+
+
 class UnrealConfigParser(RawConfigParser):
     """Custom ConfigParser that preserves comments when writing a loaded config out."""
 
@@ -102,15 +117,16 @@ class UnrealConfigParser(RawConfigParser):
     def sort(self):
         unsorted_sections = dict(self._sections)
 
-        sections = sorted(self._sections, key=str.casefold)
+        sections = sorted(self._sections, key=natural_sort_key)
         self.clear()
         for s in sections:
             self.add_section(s)
-            # sort in this order of importance, by len first then case-insensitive then lower-case first.
+
             items = sorted(
                 unsorted_sections[s].items(),
-                key=lambda s: (len(s[0]), s[0].casefold(), s[0].swapcase()),
+                key=lambda key_value: natural_sort_key(key_value[0]),
             )
+
             for i in items:
                 self.set(s, i[0], i[1])
 
@@ -518,8 +534,10 @@ class UnrealConfigParser(RawConfigParser):
         section = "@@header"
         key = "@@header"
         # Apply the headers before parsing the config lines
-        rendered: list[str] = self._comment_map[section].get(key, [])
-        rendered.append("")
+        header = self._comment_map[section].get(key, [])
+        rendered: list[str] = header
+        if len(header) > 0:
+            rendered.append("")
 
         for line in content.splitlines():
             # Order of reconstruction is section comments then any config-line
