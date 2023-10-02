@@ -323,6 +323,7 @@ class UnrealConfigParser(RawConfigParser):
     # --------------------------------------------------------------------------
 
     _comment_map: dict[str, dict[str, list[str]]] | None = None
+    _orphan_array_modifier_comment: dict[str, dict[str, list[str]]] | None = None
 
     def read(
         self,
@@ -428,6 +429,11 @@ class UnrealConfigParser(RawConfigParser):
         comment_lines: list[str] = []
         comment_map = self._comment_map if self._comment_map else {}
 
+        comment_map[section] = comment_map.get(section, {})
+        comment_map[section][key] = comment_map[section].get(key, [])
+
+        self._orphan_array_modifier_comment = {}
+
         last_array_value = None
         for line in content_lines:
             if self._is_comment(line):
@@ -436,16 +442,20 @@ class UnrealConfigParser(RawConfigParser):
                     comment = matches.group(1)
                     comment_key = self._get_key(comment)
 
-                    if (
-                        self.is_special_key(comment_key)
-                        and comment_key[1:] == key[1:]
-                        and last_array_value is not None
-                    ):
-                        comment_map[section][key] = comment_map[section].get(key, {})
-                        comment_map[section][key][last_array_value] = comment_map[
+                    # Regroup all "orphan" array modifier comment to the latest matching uncommented array modifier so it's easier to find them
+                    if section != "@@header" and self.is_special_key(comment_key):
+                        comment_key = comment_key[1:]
+                        self._orphan_array_modifier_comment[
                             section
-                        ][key].get(last_array_value, [])
-                        comment_map[section][key][last_array_value].append(line)
+                        ] = self._orphan_array_modifier_comment.get(section, {})
+                        self._orphan_array_modifier_comment[section][
+                            comment_key
+                        ] = self._orphan_array_modifier_comment[section].get(
+                            comment_key, []
+                        )
+                        self._orphan_array_modifier_comment[section][
+                            comment_key
+                        ].append(line)
                         continue
 
                 comment_lines.append(line)
@@ -579,6 +589,35 @@ class UnrealConfigParser(RawConfigParser):
         """Find and merges comments of deleted keys up the comment_map tree."""
         if self._comment_map is None:
             return
+
+        # Regroup all "orphan" array modifier comment to the latest matching uncommented array modifier so it's easier to find them
+        for section in self._orphan_array_modifier_comment:
+            for comment_key in self._orphan_array_modifier_comment[section]:
+                for key, value in self._sections[section[1:-1]].items():
+                    if key == self.SPECIAL_KEYS:
+                        last_match = None
+                        for array_key_value in value.items():
+                            for special_key, special_value in array_key_value[1]:
+                                if special_key[1:] == comment_key:
+                                    last_match = array_key_value[1][-1]
+
+                        if last_match is not None:
+                            special_key, special_value = last_match
+                            self._comment_map[section][special_key][
+                                special_value
+                            ] = self._orphan_array_modifier_comment[section][
+                                comment_key
+                            ]
+                        else:
+                            self._comment_map[section]["@@footer"] = self._comment_map[
+                                section
+                            ].get("@@footer", [])
+                            self._comment_map[section]["@@footer"] = (
+                                self._orphan_array_modifier_comment[section][
+                                    comment_key
+                                ]
+                                + self._comment_map[section]["@@footer"]
+                            )
 
         orphaned_comments: list[str] = []
         # Walk the sections and keys backward, so we merge 'up'.
