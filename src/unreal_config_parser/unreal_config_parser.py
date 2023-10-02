@@ -603,9 +603,17 @@ class UnrealConfigParser(RawConfigParser):
 
                         if last_match is not None:
                             special_key, special_value = last_match
+                            self._comment_map[section][special_key] = self._comment_map[
+                                section
+                            ].get(special_key, {})
                             self._comment_map[section][special_key][
                                 special_value
-                            ] = self._orphan_array_modifier_comment[section][
+                            ] = self._comment_map[section][special_key].get(
+                                special_value, []
+                            )
+                            self._comment_map[section][special_key][
+                                special_value
+                            ] += self._orphan_array_modifier_comment[section][
                                 comment_key
                             ]
                         else:
