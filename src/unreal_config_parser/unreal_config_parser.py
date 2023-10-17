@@ -585,6 +585,7 @@ class UnrealConfigParser(RawConfigParser):
                     self._comment_map[section][key] = []
                 rendered.append(line)
         if section != "@@header":
+            del rendered[-1]  # to avoid having a blank line
             rendered.extend(self._comment_map.get(section, {}).get("@@footer", []))
         rendered.extend(self._comment_map.get("@@footer", {}).get("@@footer", []))
 
