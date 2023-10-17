@@ -136,7 +136,8 @@ class UnrealConfigParser(RawConfigParser):
 
     @staticmethod
     def is_special_key(key):
-        return key.startswith(("!", "+", "-", "."))
+        special_key_regex = re.compile(r"[!+-.][^!+-.].*")
+        return re.match(special_key_regex, key) is not None
 
     def _write_section(self, fp, section_name, section_items, delimiter):
         """Write a single section to the specified `fp`."""
@@ -443,7 +444,11 @@ class UnrealConfigParser(RawConfigParser):
                     comment_key = self._get_key(comment)
 
                     # Regroup all "orphan" array modifier comment to the latest matching uncommented array modifier so it's easier to find them
-                    if section != "@@header" and self.is_special_key(comment_key):
+                    if (
+                        len(comment_lines) == 0
+                        and section != "@@header"
+                        and self.is_special_key(comment_key)
+                    ):
                         comment_key = comment_key[1:]
                         self._orphan_array_modifier_comment[
                             section
