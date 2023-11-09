@@ -137,7 +137,7 @@ class UnrealConfigParser(RawConfigParser):
         return optionstr
 
     @staticmethod
-    def is_special_key(key):
+    def is_special_key(key: str):
         return re.match(SPECIAL_KEY_REG, key) is not None
 
     def _write_section(self, fp, section_name, section_items, delimiter):
@@ -274,15 +274,23 @@ class UnrealConfigParser(RawConfigParser):
                         if optval is not None:
                             optval = optval.strip()
 
-                            # CORVUS_BEGIN support for Unreal config array operators
-                            if self.is_special_key(
-                                optname
-                            ):  # Treat special keys differently
-                                cursect[self.SPECIAL_KEYS] = cursect.get(
-                                    self.SPECIAL_KEYS, {}
-                                )
+                            # CORVUS_BEGIN support for Unreal config array operators. (allow duplicates and do not sort)
+                            cursect[self.SPECIAL_KEYS] = cursect.get(
+                                self.SPECIAL_KEYS, {}
+                            )
 
+                            b_is_special_key = False
+                            array_key = optname
+                            if self.is_special_key(optname):
+                                b_is_special_key = True
                                 array_key = optname[1:]
+                            elif optname in cursect[self.SPECIAL_KEYS]:
+                                # if a key was already stored as a special key but doesn't have +-!. operator still
+                                # count it as special, else it will be sorted and the array result will be different
+                                # from what was intended.
+                                b_is_special_key = True
+
+                            if b_is_special_key:
                                 cursect[self.SPECIAL_KEYS][array_key] = cursect[
                                     self.SPECIAL_KEYS
                                 ].get(array_key, [])
