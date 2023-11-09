@@ -26,8 +26,10 @@ if TYPE_CHECKING:
 
 __all__ = ["UnrealConfigParser"]
 
-COMMENT_PTN = re.compile(r"^\s*[#|;]\s*(.*)\s*")
-SECTION_PTN = re.compile(r"^\s*\[(.+)\]\s*$")
+COMMENT_REG = re.compile(r"^\s*[#|;]\s*(.*)\s*")
+SECTION_REG = re.compile(r"^\s*\[(.+)\]\s*$")
+KEY_VALUE_REG = re.compile(r"^\s*([^=\s]*)\s*=\s*([^=]*)$")
+SPECIAL_KEY_REG = re.compile(r"[!+-.][^!+-.].*")
 
 
 # Ordered Dict that allow duplicates on !+-. keys, transform them to list
@@ -136,8 +138,7 @@ class UnrealConfigParser(RawConfigParser):
 
     @staticmethod
     def is_special_key(key):
-        special_key_regex = re.compile(r"[!+-.][^!+-.].*")
-        return re.match(special_key_regex, key) is not None
+        return re.match(SPECIAL_KEY_REG, key) is not None
 
     def _write_section(self, fp, section_name, section_items, delimiter):
         """Write a single section to the specified `fp`."""
@@ -379,7 +380,7 @@ class UnrealConfigParser(RawConfigParser):
     @staticmethod
     def _is_comment(line: str) -> bool:
         """True if the line is a valid ini comment."""
-        return bool(COMMENT_PTN.search(line))
+        return bool(COMMENT_REG.search(line))
 
     @staticmethod
     def _is_empty(line: str) -> bool:
@@ -389,11 +390,12 @@ class UnrealConfigParser(RawConfigParser):
     @staticmethod
     def _is_section(line: str) -> bool:
         """True if line is a section."""
-        return bool(SECTION_PTN.search(line))
+        return bool(SECTION_REG.search(line))
 
     def _is_key(self, line: str) -> bool:
         """True if line is a key_value."""
-        return bool(self._optcre.search(line))
+        is_key = bool(KEY_VALUE_REG.search(line))
+        return is_key
 
     def _get_key(self, line: str) -> str:
         """
@@ -438,12 +440,12 @@ class UnrealConfigParser(RawConfigParser):
         last_array_value = None
         for line in content_lines:
             if self._is_comment(line):
-                matches = COMMENT_PTN.match(line)
+                matches = COMMENT_REG.match(line)
                 if matches:
                     comment = matches.group(1)
                     comment_key = self._get_key(comment)
 
-                    # Regroup all "orphan" array modifier comment to the latest matching uncommented array modifier so it's easier to find them
+                    # Regroup all "orphan" array modifier comments to the latest matching uncommented array modifier so it's easier to find them
                     if (
                         len(comment_lines) == 0
                         and section != "@@header"
@@ -525,7 +527,8 @@ class UnrealConfigParser(RawConfigParser):
         last_section_comments = []
         footer_comments = []
         for comment in comment_lines:
-            if self._is_key(comment):
+            stripped_comment = COMMENT_REG.match(comment).group(1)
+            if self._is_key(stripped_comment) and len(footer_comments) == 0:
                 last_section_comments.append(comment)
             else:
                 footer_comments.append(comment)
@@ -585,8 +588,12 @@ class UnrealConfigParser(RawConfigParser):
                     self._comment_map[section][key] = []
                 rendered.append(line)
         if section != "@@header":
-            del rendered[-1]  # to avoid having a blank line
-            rendered.extend(self._comment_map.get(section, {}).get("@@footer", []))
+
+            last_elem = rendered.pop()
+            res = self._comment_map.get(section, {}).get("@@footer", [])
+            rendered.extend(res)
+            rendered.append(last_elem)
+
         rendered.extend(self._comment_map.get("@@footer", {}).get("@@footer", []))
 
         return "\n".join(rendered)
@@ -636,7 +643,7 @@ class UnrealConfigParser(RawConfigParser):
         orphaned_comments: list[str] = []
         # Walk the sections and keys backward, so we merge 'up'.
         for section in list(self._comment_map.keys())[::-1]:
-            section_mch = SECTION_PTN.match(section)
+            section_mch = SECTION_REG.match(section)
             if section_mch is None:
                 # Strange that we have a section value that isn't a valid section
                 continue
