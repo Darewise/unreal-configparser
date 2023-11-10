@@ -1,5 +1,16 @@
-"""Custom ConfigParser class to parse UE5 config files.
-You can sort and reformat them while preserving comments in file and Array keys order."""
+"""Custom ConfigParser class to parse and format UE5 config files.
+You can sort and reformat them while preserving comments in file and Array keys order.
+
+CORVUS:
+ This whole file used the commentedconfigparser.py as a base but with heavy modifications.
+ You can find the most important changes by searching for CORVUS comments.
+ But since it's very different from original better to use a diff tool if you need to merge change from the origin.
+ What is changed?:
+ - Manage Unreal array key, unreal allows to edit array modifier keys, `commentedconfigparser` was not allowing duplicates
+   and was sorting them, it's important to not sort array keys because it would result in a different array.
+ - Better management of comments, assign comment to the key bellow, consistent between run, allow header+footer comments
+ - More natural sorting method: see `natural_sort_key` method
+"""
 from __future__ import annotations
 
 from collections import OrderedDict
@@ -32,7 +43,7 @@ KEY_VALUE_REG = re.compile(r"^\s*([^=\s]*)\s*=\s*([^=]*)$")
 SPECIAL_KEY_REG = re.compile(r"[!+-.][^!+-.].*")
 
 
-# Ordered Dict that allow duplicates on !+-. keys, transform them to list
+# CORVUS: Ordered Dict that allow duplicates on !+-. keys, transform them to list
 class UnrealConfigMultiOrderedDict(OrderedDict):
     def __setitem__(self, key, value):
         # We only want duplicate on array operators
@@ -46,7 +57,7 @@ class UnrealConfigMultiOrderedDict(OrderedDict):
             super().__setitem__(key, value)
 
 
-# try to sort keys in a natural way for human.
+# CORVUS: try to sort keys in a natural way for human.
 # e.g: a2, a12, aa, aaa, Aaa, aaaaaaaaa, aba, aBa, bb, bbb, Bbb
 # - split the strings into segments of numbers and non-numbers.
 # - compare the segments individually, in a case-insensitive way or as number.
@@ -61,10 +72,9 @@ def natural_sort_key(key):
     return [convert(segment) for segment in segments]
 
 
+# CORVUS: Overriding RawConfigParser to support the features listed on top of the file (Unreal config array, comments, ...)
 class UnrealConfigParser(RawConfigParser):
     """Custom ConfigParser that preserves comments when writing a loaded config out."""
-
-    # --- Overriding RawConfigParser function to support Unreal config array operators ---
 
     SPECIAL_KEYS = (
         ";;;;;;"  # key content doesn't matter as long as it can't be an ini key
@@ -132,7 +142,7 @@ class UnrealConfigParser(RawConfigParser):
             for i in items:
                 self.set(s, i[0], i[1])
 
-    # override to preserve case
+    # CORVUS: override to preserve case
     def optionxform(self, optionstr):
         return optionstr
 
@@ -144,10 +154,10 @@ class UnrealConfigParser(RawConfigParser):
         """Write a single section to the specified `fp`."""
         fp.write("[{}]\n".format(section_name))
         for key, value in section_items:
-            # CORVUS_BEGIN support for Unreal config array operators
+            # CORVUS: support for Unreal config array operators
             if key == self.SPECIAL_KEYS:
                 continue
-            # CORVUS_END
+
             value = self._interpolation.before_write(self, section_name, key, value)
             if value is not None or not self._allow_no_value:
                 value = delimiter + str(value).replace("\n", "\n\t")
@@ -155,15 +165,13 @@ class UnrealConfigParser(RawConfigParser):
                 value = ""
             fp.write("{}{}\n".format(key, value))
 
-        # CORVUS_BEGIN support for Unreal config array operators
-
-        # Always write special keys (list +-.!) at the end of section.
+        # CORVUS: Always write special keys (list +-.!) at the end of section.
         for key, value in section_items:
             if key == self.SPECIAL_KEYS:
                 for array_key_value in sorted(value.items()):
                     for special_key, special_value in array_key_value[1]:
                         fp.write(f"{special_key}{delimiter}{special_value}\n")
-        # CORVUS_END
+
         fp.write("\n")
 
     def _read(self, fp, fpname):
@@ -221,7 +229,7 @@ class UnrealConfigParser(RawConfigParser):
                         and cursect is not None
                         and optname
                         and optname in cursect
-                    ):  # CORVUS support for Unreal config array operators
+                    ):  # support for Unreal config array operators
                         cursect[optname].append("")  # newlines added at join
                 else:
                     # empty line marks end of value
@@ -274,7 +282,7 @@ class UnrealConfigParser(RawConfigParser):
                         if optval is not None:
                             optval = optval.strip()
 
-                            # CORVUS_BEGIN support for Unreal config array operators. (allow duplicates and do not sort)
+                            # CORVUS_BEGIN: support for Unreal config array operators. (allow duplicates and do not sort)
                             cursect[self.SPECIAL_KEYS] = cursect.get(
                                 self.SPECIAL_KEYS, {}
                             )
@@ -319,10 +327,9 @@ class UnrealConfigParser(RawConfigParser):
         all_sections = itertools.chain((defaults,), self._sections.items())
         for section, options in all_sections:
             for name, val in options.items():
-                # CORVUS_BEGIN support for Unreal config array operators
+                # CORVUS: support for Unreal config array operators
                 if name == self.SPECIAL_KEYS:
                     continue
-                # CORVUS_END
 
                 if isinstance(val, list):
                     val = "\n".join(val).rstrip()
@@ -333,7 +340,9 @@ class UnrealConfigParser(RawConfigParser):
     # --------------------------------------------------------------------------
 
     _comment_map: dict[str, dict[str, list[str]]] | None = None
-    _orphan_array_modifier_comment: dict[str, dict[str, list[str]]] | None = None
+    _orphan_array_modifier_comment: dict[
+        str, dict[str, list[str]]
+    ] | None = None  # CORVUS
 
     def read(
         self,
@@ -428,6 +437,7 @@ class UnrealConfigParser(RawConfigParser):
         matches = self._optcre.match(line)
         return matches.group(3).strip() if matches else line.strip()
 
+    # CORVUS: support for Unreal config array operators
     def _map_comments(self, content: str | None) -> None:
         """Map comments of config internally for restoration on write."""
         # The map holds comments that happen under the given key
@@ -611,7 +621,7 @@ class UnrealConfigParser(RawConfigParser):
         if self._comment_map is None:
             return
 
-        # Regroup all "orphan" array modifier comment to the latest matching uncommented array modifier so it's easier to find them
+        # CORVUS: Regroup all "orphan" array modifier comment to the latest matching uncommented array modifier so it's easier to find them
         for section in self._orphan_array_modifier_comment:
             for comment_key in self._orphan_array_modifier_comment[section]:
                 for key, value in self._sections[section[1:-1]].items():
@@ -657,12 +667,14 @@ class UnrealConfigParser(RawConfigParser):
                 continue
 
             for key in list(self._comment_map[section])[::-1]:
+                # CORVUS_BEGIN: support for Unreal config array operators
                 if self.is_special_key(key):
                     continue
                 # Key no longer exists, gather comments and loop upward
                 elif key not in ["@@header", "@@footer"] and not self.has_option(
                     section_mch.group(1), key
                 ):
+                    # CORVUS_END
                     # Comments need to be stored in reverse order to avoid
                     # needing to insert into front of list
                     orphaned_comments.extend(self._comment_map[section].pop(key)[::-1])
@@ -680,3 +692,6 @@ class UnrealConfigParser(RawConfigParser):
 
         # All remaining orphans moved to the top of the file
         self._comment_map["@@header"]["@@header"].extend(orphaned_comments[::-1])
+
+
+# CORVUS_END
